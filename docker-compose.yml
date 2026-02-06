@@ -1,0 +1,57 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: capstone_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: capstone
+      MYSQL_USER: capstone_user
+      MYSQL_PASSWORD: capstone_pass
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  airflow:
+    image: apache/airflow:2.8.4
+    container_name: capstone_airflow
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+
+      AIRFLOW__CORE__EXECUTOR: "SequentialExecutor"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "sqlite:////opt/airflow/airflow.db"
+
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+      AIRFLOW__CORE__ENABLE_XCOM_PICKLING: "false"
+
+      _AIRFLOW_WWW_USER_USERNAME: "airflow"
+      _AIRFLOW_WWW_USER_PASSWORD: "airflow"
+      _AIRFLOW_WWW_USER_FIRSTNAME: "Air"
+      _AIRFLOW_WWW_USER_LASTNAME: "Flow"
+      _AIRFLOW_WWW_USER_EMAIL: "airflow@example.com"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./data:/opt/airflow/data
+      - ./sql:/opt/airflow/sql
+      - ./logs:/opt/airflow/logs
+    ports:
+      - "8080:8080"
+    command: >
+      bash -lc "
+      airflow db migrate &&
+      airflow users create
+        --username $$(_AIRFLOW_WWW_USER_USERNAME)
+        --password $$(_AIRFLOW_WWW_USER_PASSWORD)
+        --firstname $$(_AIRFLOW_WWW_USER_FIRSTNAME)
+        --lastname $$(_AIRFLOW_WWW_USER_LASTNAME)
+        --role Admin
+        --email $$(_AIRFLOW_WWW_USER_EMAIL) || true;
+      airflow scheduler &
+      exec airflow webserver --host 0.0.0.0 --port 8080
+      "

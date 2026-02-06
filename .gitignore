@@ -1,0 +1,16 @@
+# Airflow logs + python cache
+logs/
+__pycache__/
+*.pyc
+
+# Never commit data artifacts
+data/incoming/*
+data/staging/*
+data/archive/*
+data/bad_records/*
+
+# Keep folder structure (allow .gitkeep)
+!data/**/.gitkeep
+
+# Mac junk
+.DS_Store
